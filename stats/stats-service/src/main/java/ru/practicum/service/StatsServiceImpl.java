@@ -12,8 +12,6 @@ import ru.practicum.repository.StatsRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 
-import static java.util.Objects.isNull;
-
 @Slf4j
 @Service
 @RequiredArgsConstructor
@@ -48,7 +46,7 @@ public class StatsServiceImpl implements StatsService {
     }
 
     private void validateDateOrder(LocalDateTime start, LocalDateTime end) {
-        if (isNull(start) || isNull(end) || end.isBefore(start)) {
+        if (end.isBefore(start)) {
             throw new RuntimeException("Дата конца не может быть перед датой начала.");
         }
     }
