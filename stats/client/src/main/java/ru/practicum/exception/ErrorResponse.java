@@ -1,5 +1,4 @@
-package ru.practicum.exception.model;
-
+package ru.practicum.exception;
 
 public class ErrorResponse {
 
@@ -9,5 +8,13 @@ public class ErrorResponse {
     public ErrorResponse(String error, String description) {
         this.error = error;
         this.description = description;
+    }
+
+    public String getError() {
+        return error;
+    }
+
+    public String getDescription() {
+        return description;
     }
 }

@@ -12,9 +12,9 @@ import ru.practicum.enums.EventSort;
 import ru.practicum.enums.EventState;
 import ru.practicum.enums.EventStateAction;
 import ru.practicum.enums.RequestStatus;
-import ru.practicum.exception.BadRequestException;
-import ru.practicum.exception.ConflictException;
-import ru.practicum.exception.NotFoundException;
+import ru.practicum.error.BadRequestException;
+import ru.practicum.error.ConflictException;
+import ru.practicum.error.NotFoundException;
 import ru.practicum.mapper.EventMapper;
 import ru.practicum.mapper.LocationMapper;
 import ru.practicum.mapper.ParticipationRequestMapper;
@@ -59,7 +59,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private final EventMapper eventMapper;
     private final LocationMapper locationMapper;
-    private final ParticipationRequestMapper requestMapper;
+    private final ParticipationRequestMapper participationRequestMapper;
 
     private final StatService statService;
 
@@ -107,7 +107,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         getUserIfExists(userId);
         return requestRepo.findByEventId(eventId)
                 .stream()
-                .map(requestMapper::toRequestDto)
+                .map(participationRequestMapper::toRequestDto)
                 .collect(Collectors.toList());
     }
 
@@ -305,13 +305,13 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     private void rejectAndSetInResult(List<ParticipationRequest> requestsToUpdate, EventRequestStatusUpdateResult result) {
         setStatus(requestsToUpdate, RequestStatus.REJECTED);
         List<ParticipationRequest> rejectedRequests = requestRepo.saveAll(requestsToUpdate);
-        result.setRejectedRequests(requestMapper.toRequestDtoList(rejectedRequests));
+        result.setRejectedRequests(participationRequestMapper.toRequestDtoList(rejectedRequests));
     }
 
     private void confirmAndSetInResult(List<ParticipationRequest> requestsToUpdate, EventRequestStatusUpdateResult result) {
         setStatus(requestsToUpdate, RequestStatus.CONFIRMED);
         List<ParticipationRequest> confirmed = requestRepo.saveAll(requestsToUpdate);
-        result.setConfirmedRequests(requestMapper.toRequestDtoList(confirmed));
+        result.setConfirmedRequests(participationRequestMapper.toRequestDtoList(confirmed));
     }
 
     private void setStatus(List<ParticipationRequest> requestsToUpdate, RequestStatus status) {

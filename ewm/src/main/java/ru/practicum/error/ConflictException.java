@@ -1,4 +1,4 @@
-package ru.practicum.exception;
+package ru.practicum.error;
 
 public class ConflictException extends RuntimeException {
     public ConflictException(String message) {

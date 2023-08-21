@@ -19,13 +19,14 @@ public class AdminUserController {
     private final UserService userService;
 
     @GetMapping
-    public List<UserDto> getAll(@RequestParam(defaultValue = "") List<Long> ids,
+    public List<UserDto> getAll(@RequestParam(required = false) List<Long> ids,
                                   @RequestParam(defaultValue = "0") Integer from,
                                   @RequestParam(defaultValue = "10") Integer size) {
         return userService.getAll(ids, from, size);
     }
 
     @PostMapping
+    @ResponseStatus(HttpStatus.CREATED)
     public UserDto add(@Valid @RequestBody NewUserRequest request) {
         return userService.add(request);
     }

@@ -1,4 +1,4 @@
-package ru.practicum.exception.handler;
+package ru.practicum.error.handler;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -7,16 +7,35 @@ import org.springframework.web.bind.MissingPathVariableException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.practicum.exception.ConflictException;
-import ru.practicum.exception.model.ErrorResponse;
-import ru.practicum.exception.BadRequestException;
-import ru.practicum.exception.NotFoundException;
+import ru.practicum.controllers.admin.AdminCategoryController;
+import ru.practicum.controllers.admin.AdminCompilationController;
+import ru.practicum.controllers.admin.AdminEventController;
+import ru.practicum.controllers.admin.AdminUserController;
+import ru.practicum.controllers.priv.PrivateEventController;
+import ru.practicum.controllers.priv.PrivateRequestController;
+import ru.practicum.controllers.pub.PublicCategoryController;
+import ru.practicum.controllers.pub.PublicCompilationController;
+import ru.practicum.controllers.pub.PublicEventController;
+import ru.practicum.error.ConflictException;
+import ru.practicum.error.model.ErrorResponse;
+import ru.practicum.error.BadRequestException;
+import ru.practicum.error.NotFoundException;
 
 import javax.validation.ConstraintViolationException;
 
-@RestControllerAdvice
+@RestControllerAdvice(assignableTypes = {
+        AdminUserController.class,
+        AdminCategoryController.class,
+        PublicCategoryController.class,
+        PrivateRequestController.class,
+        AdminEventController.class,
+        PublicEventController.class,
+        PrivateEventController.class,
+        AdminCompilationController.class,
+        PublicCompilationController.class
+})
 @Slf4j
-public class ErrorHandler {
+public class ErrorHandlerStats {
     @ExceptionHandler({ConstraintViolationException.class,
             MethodArgumentNotValidException.class,
             MissingPathVariableException.class,

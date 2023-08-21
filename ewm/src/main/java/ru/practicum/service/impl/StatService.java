@@ -10,7 +10,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.enums.EventState;
 import ru.practicum.model.Event;
 import ru.practicum.repository.EventRepository;
-import ru.practicum.exception.NotFoundException;
+import ru.practicum.error.NotFoundException;
 import ru.practicum.StatsClient;
 import ru.practicum.ViewStats;
 
