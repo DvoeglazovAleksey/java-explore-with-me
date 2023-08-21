@@ -1,6 +1,7 @@
 package ru.practicum.service.impl;
 
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.event.*;
@@ -12,9 +13,9 @@ import ru.practicum.enums.EventSort;
 import ru.practicum.enums.EventState;
 import ru.practicum.enums.EventStateAction;
 import ru.practicum.enums.RequestStatus;
-import ru.practicum.error.BadRequestException;
-import ru.practicum.error.ConflictException;
-import ru.practicum.error.NotFoundException;
+import ru.practicum.error.exceptions.BadRequestException;
+import ru.practicum.error.exceptions.ConflictException;
+import ru.practicum.error.exceptions.NotFoundException;
 import ru.practicum.mapper.EventMapper;
 import ru.practicum.mapper.LocationMapper;
 import ru.practicum.mapper.ParticipationRequestMapper;
@@ -23,52 +24,54 @@ import ru.practicum.repository.*;
 import ru.practicum.service.AdminEventService;
 import ru.practicum.service.PrivateEventService;
 import ru.practicum.service.PublicEventService;
-import ru.practicum.utils.ExploreUrlDecoder;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
+import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static ru.practicum.utils.ExploreConstantsAndStaticMethods.*;
 import static ru.practicum.utils.ExploreDateTimeFormatter.stringToLocalDateTime;
 
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements AdminEventService, PublicEventService, PrivateEventService {
-
+    private final String EVENT_NOT_FOUND_EXCEPTION = "Event not found.";
     private static final List<EventState> STATES_OF_EVENTS_THAT_CAN_BE_UPDATED =  List.of(
             EventState.PENDING,
             EventState.CANCELED,
             EventState.REJECTED
     );
-
     private static final List<EventState> STATES_OF_EVENTS_THAT_CAN_BE_REJECTED_OR_PUBLISHED =  List.of(
             EventState.PENDING
     );
-
     private final EventRepository eventRepo;
     private final UserRepository userRepo;
     private final RequestRepository requestRepo;
     private final CategoryRepository categoryRepo;
     private final LocationRepository locationRepo;
-
     private final EventMapper eventMapper;
     private final LocationMapper locationMapper;
     private final ParticipationRequestMapper participationRequestMapper;
-
     private final StatService statService;
 
     @Override
     @Transactional
     public EventFullDto createByPrivate(NewEventDto newEventDto, Long userId) {
-        Event newEvent = completeNewEvent(newEventDto, userId);
-        checkDateTimeIsAfterNowWithGap(newEvent.getEventDate(), 2);
-        Event savedEvent = eventRepo.save(newEvent);
+        Event event = eventMapper.toEvent(newEventDto);
+        User user = getUserIfExists(userId);
+        Category category = getCategoryIfExists(newEventDto.getCategory());
+        Location location = getLocation(newEventDto.getLocation());
+        event.setInitiator(user);
+        event.setCategory(category);
+        event.setLocation(location);
+        event.setState(EventState.PENDING);
+        checkDateTimeIsAfterNowWithGap(event.getEventDate(), 2);
+        Event savedEvent = eventRepo.save(event);
         return completeEventFullDto(savedEvent);
     }
 
@@ -76,7 +79,8 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     @Transactional(readOnly = true)
     public List<EventShortDto> getEventsByPrivate(Long userId, Integer from, Integer size) {
         getUserIfExists(userId);
-        return eventRepo.findByInitiatorId(userId, pageRequestOf(from, size))
+        int page = from / size;
+        return eventRepo.findByInitiatorId(userId, PageRequest.of(page, size))
                 .map(eventMapper::toEventShortDto)
                 .map(this::completeEventShortDto)
                 .getContent();
@@ -96,7 +100,8 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         getUserIfExists(userId);
         Event event = getEventIfExists(eventId);
         checkEventStateInList(event.getState(), STATES_OF_EVENTS_THAT_CAN_BE_UPDATED);
-        updateEventWithRequest(event, request);
+        updateEventFields(event, request);
+        updateEventStateAction(event, request.getStateAction());
         eventRepo.save(event);
         return eventMapper.toEventFullDto(event);
     }
@@ -123,7 +128,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
             return result;
         }
 
-        List<ParticipationRequest> requestsToUpdate = getRequestListByIds(requestIds);
+        List<ParticipationRequest> requestsToUpdate = requestRepo.findAllByIdIn(requestIds);
         checkAllRequestsPending(requestsToUpdate);
         RequestStatus status = RequestStatus.valueOf(update.getStatus());
 
@@ -180,7 +185,10 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     @Transactional(readOnly = true)
     public EventFullDto getEventsByPublic(Long eventId, HttpServletRequest request) {
         Event event = getEventIfExists(eventId);
-        checkEventIsPublished(event.getState());
+        boolean published = (event.getState() == EventState.PUBLISHED);
+        if (!published) {
+            throw new NotFoundException(EVENT_NOT_FOUND_EXCEPTION);
+        }
         EventFullDto eventFullDto = completeEventFullDto(event);
         statService.addHit(request);
         return eventFullDto;
@@ -207,7 +215,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private void checkEventStateInList(EventState state, List<EventState> validStates) {
         if (!validStates.contains(state)) {
-            throw new ConflictException(INVALID_EVENT_STATUS);
+            throw new ConflictException("Invalid event status.");
         }
     }
 
@@ -215,10 +223,6 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         return event.getRequestModeration() &&
                 event.getParticipantLimit() > 0 &&
                 !update.getRequestIds().isEmpty();
-    }
-
-    private List<ParticipationRequest> getRequestListByIds(List<Long> requestIds) {
-        return requestRepo.findAllByIdIn(requestIds);
     }
 
     private EventDto completeWithRequests(EventDto eventDto) {
@@ -239,14 +243,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         boolean allPending = requests.stream()
                 .allMatch(r -> r.getStatus() == RequestStatus.PENDING);
         if (!allPending) {
-            throw new ConflictException(EVENT_REQUEST_STATUS_CHANGE_FORBIDDEN);
-        }
-    }
-
-    private void checkEventIsPublished(EventState state) {
-        boolean published = (state == EventState.PUBLISHED);
-        if (!published) {
-            throw new NotFoundException(EVENT_NOT_FOUND_EXCEPTION);
+            throw new ConflictException("Impossible to change request status.");
         }
     }
 
@@ -258,18 +255,18 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
             LocalDateTime start = getFromStringOrSetDefault(startString, LocalDateTime.now());
             LocalDateTime end = getFromStringOrSetDefault(endString, null);
             if (end != null && end.isBefore(start)) {
-                throw new BadRequestException(EVENT_INCORRECT_TIME_RANGE_FILTER);
+                throw new BadRequestException("Invalid time-range filter params.");
             }
             params = eventMapper.toEventFilterParams(paramsDto,start, end);
         } catch (UnsupportedEncodingException e) {
-            throw new ConflictException(EVENT_SEARCH_INVALID_PARAMETERS);
+            throw new ConflictException("Invalid search parameters.");
         }
         return params;
     }
 
     private static LocalDateTime getFromStringOrSetDefault(String dateTimeString, LocalDateTime defaultValue) throws UnsupportedEncodingException {
         if (dateTimeString != null) {
-            return ExploreUrlDecoder.urlStringToLocalDateTime(dateTimeString);
+            return stringToLocalDateTime(java.net.URLDecoder.decode(dateTimeString, StandardCharsets.UTF_8));
         }
         return defaultValue;
     }
@@ -295,7 +292,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
                 int start = requestsToUpdate.indexOf(request);
                 int end = requestsToUpdate.size();
                 rejectAndSetInResult(requestsToUpdate.subList(start, end), result);
-                throw new ConflictException(EVENT_PARTICIPANTS_LIMIT_IS_REACHED);
+                throw new ConflictException("Participants limit is reached.");
             }
             confirmAndSetInResult(List.of(request), result);
             confirmed++;
@@ -320,7 +317,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private User getUserIfExists(Long userId) {
         return userRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException(USER_NOT_FOUND_EXCEPTION_MESSAGE));
+                .orElseThrow(() -> new NotFoundException("User not found or unavailable."));
     }
 
     private Event getEventIfExists(Long eventId) {
@@ -330,7 +327,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private Category getCategoryIfExists(Long catId) {
         return categoryRepo.findById(catId)
-                .orElseThrow(() -> new NotFoundException(CATEGORY_NOT_FOUND_EXCEPTION));
+                .orElseThrow(() -> new NotFoundException("Category not found."));
     }
 
     private Location getLocation(LocationDto locationDto) {
@@ -348,18 +345,6 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         return eventShortDto;
     }
 
-    private Event completeNewEvent(NewEventDto newEventDto, Long userId) {
-        Event event = eventMapper.toEvent(newEventDto);
-        User user = getUserIfExists(userId);
-        Category category = getCategoryIfExists(newEventDto.getCategory());
-        Location location = getLocation(newEventDto.getLocation());
-        event.setInitiator(user);
-        event.setCategory(category);
-        event.setLocation(location);
-        event.setState(EventState.PENDING);
-        return event;
-    }
-
     private EventFullDto completeEventFullDto(Event event) {
         EventFullDto eventFullDto = eventMapper.toEventFullDto(event);
         Long confirmedRequests = getConfirmedRequests(event.getId());
@@ -370,11 +355,6 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private Long getConfirmedRequests(Long eventId) {
         return requestRepo.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-    }
-
-    private void updateEventWithRequest(Event event, UpdateEventUserRequest request) {
-        updateEventFields(event, request);
-        updateEventStateAction(event, request.getStateAction());
     }
 
     private void updateEventFields(Event event, UpdateEventRequest request) {
@@ -456,6 +436,13 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     private void updateEventAnnotation(Event event, String annotation) {
         if (Objects.nonNull(annotation)) {
             event.setAnnotation(annotation);
+        }
+    }
+
+    private void checkDateTimeIsAfterNowWithGap(LocalDateTime value, Integer gapFromNowInHours) {
+        LocalDateTime minValidDateTime = LocalDateTime.now().plusHours(gapFromNowInHours);
+        if (value.isBefore(minValidDateTime)) {
+            throw new BadRequestException("Invalid event date-time.");
         }
     }
 }

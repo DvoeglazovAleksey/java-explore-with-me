@@ -8,8 +8,8 @@ import org.springframework.transaction.annotation.Transactional;
 import ru.practicum.dto.compilation.CompilationDto;
 import ru.practicum.dto.compilation.NewCompilationDto;
 import ru.practicum.dto.compilation.UpdateCompilationRequest;
-import ru.practicum.error.ConflictException;
-import ru.practicum.error.NotFoundException;
+import ru.practicum.error.exceptions.ConflictException;
+import ru.practicum.error.exceptions.NotFoundException;
 import ru.practicum.mapper.CompilationMapper;
 import ru.practicum.model.Compilation;
 import ru.practicum.model.Event;
@@ -24,7 +24,6 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 public class CompilationServiceImpl implements CompilationService {
-
     private final CompilationRepository compilationRepo;
     private final EventRepository eventRepo;
     private final CompilationMapper compilationMapper;

@@ -8,19 +8,17 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import ru.practicum.error.NotFoundException;
+import ru.practicum.error.exceptions.NotFoundException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
 import ru.practicum.service.CategoryService;
 import ru.practicum.dto.category.CategoryDto;
 import ru.practicum.dto.category.NewCategoryDto;
 import ru.practicum.repository.CategoryRepository;
-import ru.practicum.error.ConflictException;
+import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.repository.EventRepository;
 
 import java.util.List;
-
-import static ru.practicum.utils.ExploreConstantsAndStaticMethods.*;
 
 @Service
 @Slf4j
@@ -43,7 +41,9 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public void delete(Long catId) {
         Category category = getCategoryIfExists(catId);
-        checkNoEventWithCatExists(catId);
+        if (eventRepository.findByCategoryId(catId).isPresent()) {
+            throw new ConflictException("Category is connected with events and could be deleted.");
+        }
         categoryRepository.delete(category);
     }
 
@@ -52,7 +52,9 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto update(CategoryDto categoryDto, Long catId) {
         Category category = getCategoryIfExists(catId);
         checkNewCatNameIsUnique(categoryDto.getName(), category.getName());
-        updateCategoryByDto(category, categoryDto);
+        String newName = categoryDto.getName();
+        String existingName = category.getName();
+        category.setName(StringUtils.defaultIfBlank(newName, existingName));
         return categoryMapper.toCategoryDto(categoryRepository.save(category));
     }
 
@@ -74,25 +76,13 @@ public class CategoryServiceImpl implements CategoryService {
     private void checkNewCatNameIsUnique(String newName, String name) {
         if (!newName.equals(name)) {
             categoryRepository.findFirst1ByName(newName).ifPresent(cat -> {
-                throw new ConflictException(CATEGORY_NAME_ALREADY_EXISTS_EXCEPTION);
+                throw new ConflictException("Category name already exists.");
             });
-        }
-    }
-
-    private void checkNoEventWithCatExists(long catId) {
-        if (eventRepository.findByCategoryId(catId).isPresent()) {
-            throw new ConflictException(CATEGORY_IS_CONNECTED_WITH_EVENTS);
         }
     }
 
     private Category getCategoryIfExists(long catId) {
         return categoryRepository.findById(catId)
-                .orElseThrow(() -> new NotFoundException(CATEGORY_NOT_FOUND_EXCEPTION));
-    }
-
-    private void updateCategoryByDto(Category category, CategoryDto categoryDto) {
-        String newName = categoryDto.getName();
-        String existingName = category.getName();
-        category.setName(StringUtils.defaultIfBlank(newName, existingName));
+                .orElseThrow(() -> new NotFoundException("Category not found."));
     }
 }

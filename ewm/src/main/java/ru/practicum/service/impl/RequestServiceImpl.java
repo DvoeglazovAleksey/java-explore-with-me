@@ -7,8 +7,8 @@ import ru.practicum.enums.EventState;
 import ru.practicum.enums.RequestStatus;
 import ru.practicum.model.Event;
 import ru.practicum.repository.EventRepository;
-import ru.practicum.error.ConflictException;
-import ru.practicum.error.NotFoundException;
+import ru.practicum.error.exceptions.ConflictException;
+import ru.practicum.error.exceptions.NotFoundException;
 import ru.practicum.dto.request.ParticipationRequestDto;
 import ru.practicum.mapper.ParticipationRequestMapper;
 import ru.practicum.model.ParticipationRequest;
@@ -18,8 +18,6 @@ import ru.practicum.repository.UserRepository;
 import ru.practicum.service.RequestService;
 
 import java.util.List;
-
-import static ru.practicum.utils.ExploreConstantsAndStaticMethods.*;
 
 @Service
 @RequiredArgsConstructor
@@ -87,6 +85,6 @@ public class RequestServiceImpl implements RequestService {
 
     private User getUserIfExists(Long userId) {
         return userRepo.findById(userId)
-                .orElseThrow(() -> new NotFoundException(USER_NOT_FOUND_EXCEPTION_MESSAGE));
+                .orElseThrow(() -> new NotFoundException("User not found or unavailable."));
     }
 }

@@ -9,6 +9,7 @@ import org.springframework.stereotype.Service;
 import ru.practicum.exception.BadRequestException;
 
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -16,7 +17,6 @@ import java.util.StringJoiner;
 
 import static java.util.Objects.isNull;
 import static java.util.Objects.nonNull;
-import static ru.practicum.TimeStampConverter.mapToString;
 
 @Service
 public class StatsClient extends BaseClient {
@@ -46,6 +46,10 @@ public class StatsClient extends BaseClient {
         }
         String path = pathBuilder.toString();
         return makeAndSendRequest(HttpMethod.GET, path, parameters, null);
+    }
+
+    private String mapToString(LocalDateTime timestamp) {
+        return timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
     }
 }
 

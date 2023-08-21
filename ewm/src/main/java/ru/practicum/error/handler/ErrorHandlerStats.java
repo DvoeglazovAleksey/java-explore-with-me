@@ -16,10 +16,10 @@ import ru.practicum.controllers.priv.PrivateRequestController;
 import ru.practicum.controllers.pub.PublicCategoryController;
 import ru.practicum.controllers.pub.PublicCompilationController;
 import ru.practicum.controllers.pub.PublicEventController;
-import ru.practicum.error.ConflictException;
+import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.error.model.ErrorResponse;
-import ru.practicum.error.BadRequestException;
-import ru.practicum.error.NotFoundException;
+import ru.practicum.error.exceptions.BadRequestException;
+import ru.practicum.error.exceptions.NotFoundException;
 
 import javax.validation.ConstraintViolationException;
 
