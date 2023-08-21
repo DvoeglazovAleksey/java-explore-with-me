@@ -40,7 +40,6 @@ import static ru.practicum.utils.ExploreDateTimeFormatter.stringToLocalDateTime;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements AdminEventService, PublicEventService, PrivateEventService {
-    private final String EVENT_NOT_FOUND_EXCEPTION = "Event not found.";
     private static final List<EventState> STATES_OF_EVENTS_THAT_CAN_BE_UPDATED =  List.of(
             EventState.PENDING,
             EventState.CANCELED,
@@ -187,7 +186,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         Event event = getEventIfExists(eventId);
         boolean published = (event.getState() == EventState.PUBLISHED);
         if (!published) {
-            throw new NotFoundException(EVENT_NOT_FOUND_EXCEPTION);
+            throw new NotFoundException("Event not found.");
         }
         EventFullDto eventFullDto = completeEventFullDto(event);
         statService.addHit(request);
@@ -322,7 +321,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private Event getEventIfExists(Long eventId) {
         return eventRepo.findById(eventId)
-                .orElseThrow(() -> new NotFoundException(EVENT_NOT_FOUND_EXCEPTION));
+                .orElseThrow(() -> new NotFoundException("Event not found."));
     }
 
     private Category getCategoryIfExists(Long catId) {
