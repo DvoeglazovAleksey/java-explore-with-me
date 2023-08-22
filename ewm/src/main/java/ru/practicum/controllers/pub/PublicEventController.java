@@ -18,7 +18,7 @@ public class PublicEventController {
     private final PublicEventService service;
 
     @GetMapping
-    public List<EventShortDto> get(@Valid @ModelAttribute EventFilterParamsDto params, HttpServletRequest request) {
+    public List<EventShortDto> get(@Valid EventFilterParamsDto params, HttpServletRequest request) {
         return service.getEventsByPublic(params, request);
     }
 

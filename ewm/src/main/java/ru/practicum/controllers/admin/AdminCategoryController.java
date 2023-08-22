@@ -2,17 +2,16 @@ package ru.practicum.controllers.admin;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.dto.category.CategoryDto;
 import ru.practicum.dto.category.NewCategoryDto;
+import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.service.CategoryService;
 
 import javax.validation.Valid;
 
 @RestController
 @RequestMapping("/admin/categories")
-@Validated
 @RequiredArgsConstructor
 public class AdminCategoryController {
     private final CategoryService service;
@@ -20,13 +19,21 @@ public class AdminCategoryController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CategoryDto add(@Valid @RequestBody NewCategoryDto newCategoryDto) {
-        return service.add(newCategoryDto);
+        try {
+            return service.add(newCategoryDto);
+        } catch (RuntimeException e) {
+            throw new ConflictException("Category name already exists.");
+        }
     }
 
     @PatchMapping("/{catId}")
     public CategoryDto patch(@PathVariable Long catId,
                              @Valid @RequestBody CategoryDto categoryDto) {
-        return service.update(categoryDto, catId);
+        try {
+            return service.update(categoryDto, catId);
+        } catch (RuntimeException e) {
+            throw new ConflictException("Category name already exists.");
+        }
     }
 
     @DeleteMapping("/{catId}")

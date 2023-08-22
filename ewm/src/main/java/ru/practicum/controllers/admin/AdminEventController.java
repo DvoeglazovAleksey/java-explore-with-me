@@ -18,7 +18,7 @@ public class AdminEventController {
     private final AdminEventService service;
 
     @GetMapping
-    public List<EventFullDto> getByAdmin(@Valid @ModelAttribute EventFilterParamsDto params) {
+    public List<EventFullDto> getByAdmin(@Valid EventFilterParamsDto params) {
         return service.getEventsByAdmin(params);
     }
 

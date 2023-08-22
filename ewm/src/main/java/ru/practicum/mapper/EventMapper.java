@@ -2,19 +2,17 @@ package ru.practicum.mapper;
 
 import org.mapstruct.Mapper;
 import org.mapstruct.Mapping;
-import org.springframework.stereotype.Component;
 import ru.practicum.dto.event.*;
 import ru.practicum.model.Event;
 
 import java.time.LocalDateTime;
 import java.util.List;
 
-@Component
 @Mapper(componentModel = "spring", uses = {CategoryMapper.class, UserMapper.class, LocationMapper.class})
 public interface EventMapper {
 
     @Mapping(target = "id", ignore = true)
-    @Mapping(target = "eventDate", expression = "java(ru.practicum.utils.ExploreDateTimeFormatter.stringToLocalDateTime(newEventDto.getEventDate()))")
+    @Mapping(target = "eventDate", expression = "java(newEventDto.getEventDate())")
     @Mapping(target = "category", ignore = true)
     @Mapping(target = "location", ignore = true)
     @Mapping(target = "createdOn", ignore = true)

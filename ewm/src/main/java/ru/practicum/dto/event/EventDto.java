@@ -12,7 +12,7 @@ import ru.practicum.dto.user.UserShortDto;
 import java.util.Comparator;
 import java.util.Objects;
 
-import static ru.practicum.utils.ExploreDateTimeFormatter.stringToLocalDateTime;
+import static ru.practicum.utils.ExploreDateTimeFormatter.*;
 
 @Getter
 @Setter

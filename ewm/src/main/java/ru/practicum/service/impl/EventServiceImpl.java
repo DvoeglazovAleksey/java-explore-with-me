@@ -9,10 +9,7 @@ import ru.practicum.dto.location.LocationDto;
 import ru.practicum.dto.request.EventRequestStatusUpdateRequest;
 import ru.practicum.dto.request.EventRequestStatusUpdateResult;
 import ru.practicum.dto.request.ParticipationRequestDto;
-import ru.practicum.enums.EventSort;
-import ru.practicum.enums.EventState;
-import ru.practicum.enums.EventStateAction;
-import ru.practicum.enums.RequestStatus;
+import ru.practicum.enums.*;
 import ru.practicum.error.exceptions.BadRequestException;
 import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.error.exceptions.NotFoundException;
@@ -34,7 +31,7 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
-import static ru.practicum.utils.ExploreDateTimeFormatter.stringToLocalDateTime;
+import static ru.practicum.utils.ExploreDateTimeFormatter.*;
 
 @Service
 @RequiredArgsConstructor
@@ -161,12 +158,12 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         LocalDateTime actual = event.getEventDate();
         checkDateTimeIsAfterNowWithGap(actual, 1);
 
-        LocalDateTime target = stringToLocalDateTime(request.getEventDate());
+        LocalDateTime target = request.getEventDate();
         if (Objects.nonNull(target)) {
             checkDateTimeIsAfterNowWithGap(target, 2);
         }
 
-        EventStateAction action = request.getStateAction();
+        StateActionAdmin action = request.getStateAction();
         if (Objects.nonNull(action)) {
             switch (action) {
                 case PUBLISH_EVENT:
@@ -369,16 +366,16 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     }
 
     private void updateEventTitle(Event event, String title) {
-        if (Objects.nonNull(title)) {
+        if (Objects.nonNull(title) && !title.isBlank()) {
             event.setTitle(title);
         }
     }
 
-    private void updateEventStateAction(Event event, EventStateAction action) {
+    private void updateEventStateAction(Event event, StateActionUser action) {
         if (Objects.nonNull(action)) {
-            if (action == EventStateAction.SEND_TO_REVIEW) {
+            if (action == StateActionUser.SEND_TO_REVIEW) {
                 event.setState(EventState.PENDING);
-            } else if (action == EventStateAction.CANCEL_REVIEW) {
+            } else if (action == StateActionUser.CANCEL_REVIEW) {
                 event.setState(EventState.CANCELED);
             }
         }
@@ -409,18 +406,15 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         }
     }
 
-    private void updateEventDate(Event event, String eventDate) {
+    private void updateEventDate(Event event, LocalDateTime eventDate) {
         if (Objects.nonNull(eventDate)) {
-            LocalDateTime updatedEventDate = stringToLocalDateTime(eventDate);
-            if (Objects.nonNull(updatedEventDate)) {
-                checkDateTimeIsAfterNowWithGap(updatedEventDate, 1);
-                event.setEventDate(updatedEventDate);
+                checkDateTimeIsAfterNowWithGap(eventDate, 1);
+                event.setEventDate(eventDate);
             }
-        }
     }
 
     private void updateEventDescription(Event event, String description) {
-        if (Objects.nonNull(description)) {
+        if (Objects.nonNull(description) && !description.isBlank()) {
             event.setDescription(description);
         }
     }

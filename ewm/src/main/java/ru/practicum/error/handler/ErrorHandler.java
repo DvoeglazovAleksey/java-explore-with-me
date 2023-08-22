@@ -4,6 +4,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
+import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
@@ -35,20 +36,23 @@ import javax.validation.ConstraintViolationException;
         PublicCompilationController.class
 })
 @Slf4j
-public class ErrorHandlerStats {
+public class ErrorHandler {
     @ExceptionHandler({ConstraintViolationException.class,
             MethodArgumentNotValidException.class,
             MissingPathVariableException.class,
             BadRequestException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handle(Exception e) throws Exception {
+    public ErrorResponse handle(Exception e) throws Throwable {
         if (e instanceof ConstraintViolationException ||
                 e instanceof MethodArgumentNotValidException ||
                 e instanceof MissingPathVariableException ||
                 e instanceof BadRequestException) {
+            log.debug("Получен статус 400 BAD_REQUEST {}", e.getMessage(), e);
             return new ErrorResponse("Validation error: ", e.getMessage());
+        } else {
+            log.error("Произошла непредвиденная ошибка, получен статус 500 :  {} ", e.getMessage(), e);
+            return new ErrorResponse("INTERNAL_SERVER_ERROR", e.getMessage());
         }
-        throw e;
     }
 
     @ExceptionHandler
@@ -63,5 +67,19 @@ public class ErrorHandlerStats {
     public ErrorResponse handleConflictException(final ConflictException e) {
         log.error(e.getMessage(), e);
         return new ErrorResponse("Conflict error: ", e.getMessage());
+    }
+
+    @ExceptionHandler()
+    @ResponseStatus(HttpStatus.INTERNAL_SERVER_ERROR)
+    public ru.practicum.exception.ErrorResponse handleThrowable(final Throwable e) {
+        log.error("Произошла непредвиденная ошибка, получен статус 500 :  {} ", e.getMessage(), e);
+        return new ru.practicum.exception.ErrorResponse("INTERNAL_SERVER_ERROR", e.getMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.BAD_REQUEST)
+    public ru.practicum.exception.ErrorResponse handleMissingServletRequestParameterException(final MissingServletRequestParameterException e) {
+        log.error(e.getMessage(), e);
+        return new ru.practicum.exception.ErrorResponse("Validation error: ", e.getMessage());
     }
 }

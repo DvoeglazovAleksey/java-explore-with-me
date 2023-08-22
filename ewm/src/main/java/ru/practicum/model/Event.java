@@ -5,6 +5,7 @@ import org.hibernate.annotations.CreationTimestamp;
 import ru.practicum.enums.EventState;
 
 import javax.persistence.*;
+import javax.validation.Valid;
 import java.time.LocalDateTime;
 
 @Getter
@@ -37,6 +38,7 @@ public class Event {
 
     @ManyToOne
     @JoinColumn(name = "location_id")
+    @Valid
     private Location location;
 
     private Boolean paid;

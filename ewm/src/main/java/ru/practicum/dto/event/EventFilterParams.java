@@ -13,7 +13,6 @@ import java.util.List;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 public class EventFilterParams {
-
     private List<Long> ids;
     private List<EventState> states;
     private List<Long> categories;

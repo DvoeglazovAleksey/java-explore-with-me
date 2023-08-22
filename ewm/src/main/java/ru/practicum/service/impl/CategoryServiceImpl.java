@@ -8,15 +8,15 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import ru.practicum.dto.category.CategoryDto;
+import ru.practicum.dto.category.NewCategoryDto;
+import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.error.exceptions.NotFoundException;
 import ru.practicum.mapper.CategoryMapper;
 import ru.practicum.model.Category;
-import ru.practicum.service.CategoryService;
-import ru.practicum.dto.category.CategoryDto;
-import ru.practicum.dto.category.NewCategoryDto;
 import ru.practicum.repository.CategoryRepository;
-import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.repository.EventRepository;
+import ru.practicum.service.CategoryService;
 
 import java.util.List;
 
@@ -32,7 +32,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryDto add(NewCategoryDto category) {
         Category newCategory = categoryMapper.toCategory(category);
-        checkNewCatNameIsUnique(category.getName(), null);
         Category saved = categoryRepository.save(newCategory);
         return categoryMapper.toCategoryDto(saved);
     }
@@ -51,7 +50,6 @@ public class CategoryServiceImpl implements CategoryService {
     @Transactional
     public CategoryDto update(CategoryDto categoryDto, Long catId) {
         Category category = getCategoryIfExists(catId);
-        checkNewCatNameIsUnique(categoryDto.getName(), category.getName());
         String newName = categoryDto.getName();
         String existingName = category.getName();
         category.setName(StringUtils.defaultIfBlank(newName, existingName));
@@ -71,14 +69,6 @@ public class CategoryServiceImpl implements CategoryService {
     public CategoryDto getById(Long catId) {
         Category category = getCategoryIfExists(catId);
         return categoryMapper.toCategoryDto(category);
-    }
-
-    private void checkNewCatNameIsUnique(String newName, String name) {
-        if (!newName.equals(name)) {
-            categoryRepository.findFirst1ByName(newName).ifPresent(cat -> {
-                throw new ConflictException("Category name already exists.");
-            });
-        }
     }
 
     private Category getCategoryIfExists(long catId) {

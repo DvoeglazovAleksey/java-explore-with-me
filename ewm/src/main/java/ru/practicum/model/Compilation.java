@@ -5,7 +5,7 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 
 import javax.persistence.*;
-import java.util.List;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -14,17 +14,16 @@ import java.util.List;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 public class Compilation {
-
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     @Column(name = "id")
-    Long id;
+    private Long id;
 
     @Column(name = "title")
-    String title;
+    private String title;
 
     @Column(name = "pinned")
-    Boolean pinned;
+    private Boolean pinned;
 
     @ManyToMany
     @JoinTable(
@@ -32,5 +31,5 @@ public class Compilation {
             joinColumns = @JoinColumn(name = "compilation_id", referencedColumnName = "id"),
             inverseJoinColumns = @JoinColumn(name = "event_id", referencedColumnName = "id"))
     @OnDelete(action = OnDeleteAction.CASCADE)
-    List<Event> events;
+    private Set<Event> events;
 }

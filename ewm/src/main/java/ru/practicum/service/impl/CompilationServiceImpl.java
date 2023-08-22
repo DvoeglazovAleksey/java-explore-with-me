@@ -17,9 +17,7 @@ import ru.practicum.repository.CompilationRepository;
 import ru.practicum.repository.EventRepository;
 import ru.practicum.service.CompilationService;
 
-import java.util.Collections;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 @Service
 @RequiredArgsConstructor
@@ -32,7 +30,7 @@ public class CompilationServiceImpl implements CompilationService {
     @Transactional
     public CompilationDto add(NewCompilationDto newCompDto) {
         List<Event> events = fetchEvents(newCompDto.getEvents());
-        Compilation newComp = compilationMapper.toCompilation(newCompDto, events);
+        Compilation newComp = compilationMapper.toCompilation(newCompDto, new HashSet<>(events));
         Compilation savedComp = compilationRepo.save(newComp);
         return compilationMapper.toCompilationDto(savedComp);
     }
@@ -43,16 +41,17 @@ public class CompilationServiceImpl implements CompilationService {
         Compilation compilation = getCompilationById(compId);
         if (!request.getEvents().isEmpty()) {
             List<Event> updatedEvents = fetchEvents(request.getEvents());
-            compilation.setEvents(updatedEvents);
+            compilation.setEvents(new HashSet<>(updatedEvents));
         }
         if (Objects.nonNull(request.getPinned())) {
             compilation.setPinned(request.getPinned());
         }
-        if (request.getTitle() != null) {
-            if (compilationRepo.existsByTitleAndIdNot(request.getTitle(), compilation.getId())) {
+        String title = request.getTitle();
+        if (title != null && title.isBlank()) {
+            if (compilationRepo.existsByTitleAndIdNot(title, compilation.getId())) {
                 throw new ConflictException("Compilation title already exists and could not be used");
             }
-            compilation.setTitle(request.getTitle());
+            compilation.setTitle(title);
         }
         Compilation updatedComp = compilationRepo.save(compilation);
         return compilationMapper.toCompilationDto(updatedComp);
@@ -84,8 +83,8 @@ public class CompilationServiceImpl implements CompilationService {
                 .orElseThrow(() -> new NotFoundException("Compilation not found."));
     }
 
-    private List<Event> fetchEvents(List<Long> eventIds) {
-        if (eventIds.isEmpty()) {
+    private List<Event> fetchEvents(Set<Long> eventIds) {
+        if (eventIds == null || eventIds.isEmpty()) {
             return Collections.emptyList();
         }
         return eventRepo.findAllById(eventIds);

@@ -4,9 +4,8 @@ import lombok.*;
 import org.hibernate.validator.constraints.Length;
 
 import javax.validation.constraints.NotBlank;
-import javax.validation.constraints.NotNull;
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashSet;
+import java.util.Set;
 
 @Getter
 @Setter
@@ -14,10 +13,9 @@ import java.util.List;
 @NoArgsConstructor
 @Builder(toBuilder = true)
 public class NewCompilationDto {
-    @NotNull
     @NotBlank
     @Length(min = 1, max = 50)
     private String title;
-    private List<Long> events = new ArrayList<>();
-    private Boolean pinned = Boolean.FALSE;
+    private Set<Long> events = new HashSet<>();
+    private boolean pinned = Boolean.FALSE;
 }

@@ -20,6 +20,8 @@ import static java.util.Objects.nonNull;
 
 @Service
 public class StatsClient extends BaseClient {
+    private static final String DATE_TIME_FORMAT = "yyyy-MM-dd HH:mm:ss";
+
     public StatsClient(@Value("${stats-server.url}") String serverUrl, RestTemplateBuilder builder) {
         super(serverUrl, builder);
     }
@@ -49,7 +51,7 @@ public class StatsClient extends BaseClient {
     }
 
     private String mapToString(LocalDateTime timestamp) {
-        return timestamp.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"));
+        return timestamp.format(DateTimeFormatter.ofPattern(DATE_TIME_FORMAT));
     }
 }
 
