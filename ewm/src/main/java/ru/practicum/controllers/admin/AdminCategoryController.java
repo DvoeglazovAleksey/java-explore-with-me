@@ -5,7 +5,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 import ru.practicum.dto.category.CategoryDto;
 import ru.practicum.dto.category.NewCategoryDto;
-import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.service.CategoryService;
 
 import javax.validation.Valid;
@@ -19,21 +18,13 @@ public class AdminCategoryController {
     @PostMapping
     @ResponseStatus(HttpStatus.CREATED)
     public CategoryDto add(@Valid @RequestBody NewCategoryDto newCategoryDto) {
-        try {
-            return service.add(newCategoryDto);
-        } catch (RuntimeException e) {
-            throw new ConflictException("Category name already exists.");
-        }
+        return service.add(newCategoryDto);
     }
 
     @PatchMapping("/{catId}")
     public CategoryDto patch(@PathVariable Long catId,
                              @Valid @RequestBody CategoryDto categoryDto) {
-        try {
-            return service.update(categoryDto, catId);
-        } catch (RuntimeException e) {
-            throw new ConflictException("Category name already exists.");
-        }
+        return service.update(categoryDto, catId);
     }
 
     @DeleteMapping("/{catId}")

@@ -12,7 +12,6 @@ import javax.validation.constraints.NotBlank;
 @Builder(toBuilder = true)
 @AllArgsConstructor
 public class EndpointHit {
-
     @NotBlank
     private String app;
     @NotBlank

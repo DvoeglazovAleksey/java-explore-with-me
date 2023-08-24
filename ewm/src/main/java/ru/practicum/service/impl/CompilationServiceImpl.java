@@ -29,8 +29,8 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     @Transactional
     public CompilationDto add(NewCompilationDto newCompDto) {
-        List<Event> events = fetchEvents(newCompDto.getEvents());
-        Compilation newComp = compilationMapper.toCompilation(newCompDto, new HashSet<>(events));
+        Set<Event> events = fetchEvents(newCompDto.getEvents());
+        Compilation newComp = compilationMapper.toCompilation(newCompDto, events);
         Compilation savedComp = compilationRepo.save(newComp);
         return compilationMapper.toCompilationDto(savedComp);
     }
@@ -39,9 +39,10 @@ public class CompilationServiceImpl implements CompilationService {
     @Transactional
     public CompilationDto update(Long compId, UpdateCompilationRequest request) {
         Compilation compilation = getCompilationById(compId);
-        if (!request.getEvents().isEmpty()) {
-            List<Event> updatedEvents = fetchEvents(request.getEvents());
-            compilation.setEvents(new HashSet<>(updatedEvents));
+        Set<Long> eventsIds = request.getEvents();
+        if (!eventsIds.isEmpty() || Objects.nonNull(eventsIds)) {
+            Set<Event> updatedEvents = fetchEvents(eventsIds);
+            compilation.setEvents(updatedEvents);
         }
         if (Objects.nonNull(request.getPinned())) {
             compilation.setPinned(request.getPinned());
@@ -67,7 +68,12 @@ public class CompilationServiceImpl implements CompilationService {
     @Override
     @Transactional(readOnly = true)
     public List<CompilationDto> getAll(Boolean pinned, Integer from, Integer size) {
-        Page<Compilation> compilations = compilationRepo.findAllByPinned(pinned, PageRequest.of(from / size, size));
+        Page<Compilation> compilations;
+        if (pinned == null) {
+            compilations = compilationRepo.findAll(PageRequest.of(from / size, size));
+        } else {
+            compilations = compilationRepo.findAllByPinned(pinned, PageRequest.of(from / size, size));
+        }
         return compilations.map(compilationMapper::toCompilationDto).getContent();
     }
 
@@ -83,10 +89,10 @@ public class CompilationServiceImpl implements CompilationService {
                 .orElseThrow(() -> new NotFoundException("Compilation not found."));
     }
 
-    private List<Event> fetchEvents(Set<Long> eventIds) {
+    private Set<Event> fetchEvents(Set<Long> eventIds) {
         if (eventIds == null || eventIds.isEmpty()) {
-            return Collections.emptyList();
+            return Collections.emptySet();
         }
-        return eventRepo.findAllById(eventIds);
+        return new HashSet<>(eventRepo.findAllById(eventIds));
     }
 }

@@ -21,12 +21,12 @@ public interface EventMapper {
     @Mapping(target = "state", ignore = true)
     Event toEvent(NewEventDto newEventDto);
 
-    @Mapping(target = "confirmedRequests", ignore = true)
+    @Mapping(target = "confirmedRequests", source = "confirmedRequests")
     @Mapping(target = "createdOn", expression = "java(ru.practicum.utils.ExploreDateTimeFormatter.localDateTimeToString(event.getEventDate()))")
     @Mapping(target = "eventDate", expression = "java(ru.practicum.utils.ExploreDateTimeFormatter.localDateTimeToString(event.getEventDate()))")
     @Mapping(target = "initiator", source = "initiator")
     @Mapping(target = "publishedOn", expression = "java(ru.practicum.utils.ExploreDateTimeFormatter.localDateTimeToString(event.getPublishedOn()))")
-    @Mapping(target = "views", ignore = true)
+    @Mapping(target = "views", source = "views")
     EventFullDto toEventFullDto(Event event);
 
     @Mapping(target = "category", source = "category")
@@ -40,5 +40,5 @@ public interface EventMapper {
     @Mapping(target = "rangeEnd", expression = "java(end)")
     EventFilterParams toEventFilterParams(EventFilterParamsDto filterDto, LocalDateTime start, LocalDateTime end);
 
-    List<EventShortDto> toEventShortDtoList(List<EventDto> eventDtos);
+    List<EventShortDto> toEventShortDtoListForEvents(List<Event> events);
 }

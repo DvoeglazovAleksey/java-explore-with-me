@@ -18,5 +18,4 @@ public class EventFullDto extends EventDto {
     private String publishedOn;
     private Boolean requestModeration;
     private String state;
-
 }

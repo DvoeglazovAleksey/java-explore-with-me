@@ -7,6 +7,7 @@ import org.hibernate.validator.constraints.Length;
 import ru.practicum.dto.location.LocationDto;
 
 import javax.validation.Valid;
+import javax.validation.constraints.Future;
 import javax.validation.constraints.Min;
 import javax.validation.constraints.NotBlank;
 import javax.validation.constraints.NotNull;
@@ -23,6 +24,8 @@ public class NewEventDto {
     @Length(min = 20, max = 7000)
     @NotBlank
     private String description;
+    @NotNull
+    @Future
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime eventDate;
     @NotNull

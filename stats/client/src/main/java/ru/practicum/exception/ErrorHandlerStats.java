@@ -15,6 +15,8 @@ import javax.validation.ConstraintViolationException;
 @Slf4j
 public class ErrorHandlerStats {
     @ExceptionHandler(value = {ConstraintViolationException.class,
+            MethodArgumentNotValidException.class,
+            MissingPathVariableException.class,
             BadRequestException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
     public ErrorResponse handle(Exception e) throws Exception {

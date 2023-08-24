@@ -26,9 +26,7 @@ import javax.servlet.http.HttpServletRequest;
 import java.io.UnsupportedEncodingException;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
-import java.util.Comparator;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 import java.util.stream.Collectors;
 
 import static ru.practicum.utils.ExploreDateTimeFormatter.*;
@@ -37,14 +35,6 @@ import static ru.practicum.utils.ExploreDateTimeFormatter.*;
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class EventServiceImpl implements AdminEventService, PublicEventService, PrivateEventService {
-    private static final List<EventState> STATES_OF_EVENTS_THAT_CAN_BE_UPDATED =  List.of(
-            EventState.PENDING,
-            EventState.CANCELED,
-            EventState.REJECTED
-    );
-    private static final List<EventState> STATES_OF_EVENTS_THAT_CAN_BE_REJECTED_OR_PUBLISHED =  List.of(
-            EventState.PENDING
-    );
     private final EventRepository eventRepo;
     private final UserRepository userRepo;
     private final RequestRepository requestRepo;
@@ -68,7 +58,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         event.setState(EventState.PENDING);
         checkDateTimeIsAfterNowWithGap(event.getEventDate(), 2);
         Event savedEvent = eventRepo.save(event);
-        return completeEventFullDto(savedEvent);
+        return eventMapper.toEventFullDto(savedEvent);
     }
 
     @Override
@@ -76,10 +66,10 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     public List<EventShortDto> getEventsByPrivate(Long userId, Integer from, Integer size) {
         getUserIfExists(userId);
         int page = from / size;
-        return eventRepo.findByInitiatorId(userId, PageRequest.of(page, size))
-                .map(eventMapper::toEventShortDto)
-                .map(this::completeEventShortDto)
-                .getContent();
+        List<Event> events = eventRepo.findByInitiatorId(userId, PageRequest.of(page, size));
+        statService.getViewsList(events);
+        getConfirmedRequest(events);
+        return new ArrayList<>(eventMapper.toEventShortDtoListForEvents(events));
     }
 
     @Override
@@ -87,7 +77,8 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     public EventFullDto getEventByPrivate(Long userId, Long eventId) {
         getUserIfExists(userId);
         Event event = getEventIfExists(eventId);
-        return completeEventFullDto(event);
+        getConfirmedRequest(List.of(event));
+        return eventMapper.toEventFullDto(event);
     }
 
     @Override
@@ -95,7 +86,9 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     public EventFullDto updateByPrivate(UpdateEventUserRequest request, Long userId, Long eventId) {
         getUserIfExists(userId);
         Event event = getEventIfExists(eventId);
-        checkEventStateInList(event.getState(), STATES_OF_EVENTS_THAT_CAN_BE_UPDATED);
+        if (event.getState() == EventState.PUBLISHED) {
+            throw new ConflictException("You cannot update a published event");
+        }
         updateEventFields(event, request);
         updateEventStateAction(event, request.getStateAction());
         eventRepo.save(event);
@@ -119,15 +112,12 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
         Event event = getEventIfExists(eventId);
         List<Long> requestIds = update.getRequestIds();
         EventRequestStatusUpdateResult result = new EventRequestStatusUpdateResult();
-
         if (!isRequestStatusUpdateAllowed(event, update)) {
             return result;
         }
-
         List<ParticipationRequest> requestsToUpdate = requestRepo.findAllByIdIn(requestIds);
         checkAllRequestsPending(requestsToUpdate);
         RequestStatus status = RequestStatus.valueOf(update.getStatus());
-
         if (status == RequestStatus.CONFIRMED) {
             confirmAndSetInResult(requestsToUpdate, result, event);
         } else if (status == RequestStatus.REJECTED) {
@@ -140,12 +130,11 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     @Transactional(readOnly = true)
     public List<EventFullDto> getEventsByAdmin(EventFilterParamsDto paramsDto) {
         EventFilterParams params = convertInputParams(paramsDto);
-        return eventRepo.adminEventsSearch(params)
-                .stream()
+        List<Event> events = eventRepo.adminEventsSearch(params);
+        statService.getViewsList(events);
+        getConfirmedRequest(events);
+        return events.stream()
                 .map(eventMapper::toEventFullDto)
-                .map(this::completeWithRequests)
-                .map(this::completeWithViews)
-                .map(eventDto -> (EventFullDto) eventDto)
                 .sorted(getComparator(params.getSort()))
                 .collect(Collectors.toList());
     }
@@ -154,15 +143,12 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     @Transactional
     public EventFullDto updateEventByAdmin(UpdateEventAdminRequest request, Long eventId) {
         Event event = getEventIfExists(eventId);
-
         LocalDateTime actual = event.getEventDate();
         checkDateTimeIsAfterNowWithGap(actual, 1);
-
         LocalDateTime target = request.getEventDate();
         if (Objects.nonNull(target)) {
             checkDateTimeIsAfterNowWithGap(target, 2);
         }
-
         StateActionAdmin action = request.getStateAction();
         if (Objects.nonNull(action)) {
             switch (action) {
@@ -195,24 +181,23 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     public List<EventShortDto> getEventsByPublic(EventFilterParamsDto paramsDto, HttpServletRequest request) {
         EventFilterParams params = convertInputParams(paramsDto);
         List<Event> events = eventRepo.publicEventsSearch(params);
-        List<EventDto> eventDtos = events.stream()
-                .map(eventMapper::toEventShortDto)
-                .peek(this::completeWithRequests)
-                .peek(this::completeWithViews)
-                .sorted(getComparator(params.getSort()))
-                .collect(Collectors.toList());
+        statService.getViewsList(events);
+        getConfirmedRequest(events);
         statService.addHit(request);
-        return eventMapper.toEventShortDtoList(eventDtos);
+        return events.stream().map(eventMapper::toEventShortDto)
+                .sorted(getComparator(params.getSort())).collect(Collectors.toList());
+    }
+
+    private void getConfirmedRequest(List<Event> events) {
+        List<Long> eventIds = events.stream().map(Event::getId).collect(Collectors.toList());
+        List<ConfirmedRequest> confirmedRequests = requestRepo.findConfirmedRequest(eventIds);
+        Map<Long, Long> confirmedRequestsMap = confirmedRequests.stream()
+                .collect(Collectors.toMap(ConfirmedRequest::getEventId, ConfirmedRequest::getCount));
+        events.forEach(event -> event.setConfirmedRequests(confirmedRequestsMap.getOrDefault(event.getId(), 0L)));
     }
 
     private Comparator<EventDto> getComparator(EventSort sortType) {
         return EventDto.getComparator(sortType);
-    }
-
-    private void checkEventStateInList(EventState state, List<EventState> validStates) {
-        if (!validStates.contains(state)) {
-            throw new ConflictException("Invalid event status.");
-        }
     }
 
     private boolean isRequestStatusUpdateAllowed(Event event, EventRequestStatusUpdateRequest update) {
@@ -221,18 +206,10 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
                 !update.getRequestIds().isEmpty();
     }
 
-    private EventDto completeWithRequests(EventDto eventDto) {
-        Long eventId = eventDto.getId();
-        Long confirmedRequests = requestRepo.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
-        eventDto.setConfirmedRequests(confirmedRequests);
-        return eventDto;
-    }
-
-    private EventDto completeWithViews(EventDto eventDto) {
+    private void completeWithViews(EventDto eventDto) {
         Long eventId = eventDto.getId();
         Long views = statService.getViews(eventId);
         eventDto.setViews(views);
-        return eventDto;
     }
 
     private static void checkAllRequestsPending(List<ParticipationRequest> requests) {
@@ -253,7 +230,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
             if (end != null && end.isBefore(start)) {
                 throw new BadRequestException("Invalid time-range filter params.");
             }
-            params = eventMapper.toEventFilterParams(paramsDto,start, end);
+            params = eventMapper.toEventFilterParams(paramsDto, start, end);
         } catch (UnsupportedEncodingException e) {
             throw new ConflictException("Invalid search parameters.");
         }
@@ -268,15 +245,27 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     }
 
     private void publishEvent(UpdateEventAdminRequest request, Event event) {
-        checkEventStateInList(event.getState(), STATES_OF_EVENTS_THAT_CAN_BE_REJECTED_OR_PUBLISHED);
+        EventState state = event.getState();
+        if (state == EventState.PUBLISHED) {
+            throw new ConflictException("The event has already been published");
+        }
+        if (state == EventState.REJECTED) {
+            throw new ConflictException("The event has already been rejected");
+        }
+        if (state == EventState.CANCELED) {
+            throw new ConflictException("The event has already been canceled");
+        }
         updateEventFields(event, request);
         event.setState(EventState.PUBLISHED);
         event.setPublishedOn(LocalDateTime.now());
     }
 
     private void rejectEvent(Event event) {
-        checkEventStateInList(event.getState(), STATES_OF_EVENTS_THAT_CAN_BE_REJECTED_OR_PUBLISHED);
-        event.setState(EventState.REJECTED);
+        EventState state = event.getState();
+        if (state == EventState.PUBLISHED || state == EventState.CANCELED) {
+            throw new ConflictException("You cannot reject a published event");
+        }
+        event.setState(EventState.CANCELED);
     }
 
     private void confirmAndSetInResult(List<ParticipationRequest> requestsToUpdate, EventRequestStatusUpdateResult result, Event event) {
@@ -332,25 +321,12 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
                 .orElse(locationRepo.save(location));
     }
 
-    private EventShortDto completeEventShortDto(EventShortDto eventShortDto) {
-        Long eventId = eventShortDto.getId();
-        Long confirmedRequests = getConfirmedRequests(eventId);
-        Long views = statService.getViews(eventId);
-        eventShortDto.setConfirmedRequests(confirmedRequests);
-        eventShortDto.setViews(views);
-        return eventShortDto;
-    }
-
     private EventFullDto completeEventFullDto(Event event) {
         EventFullDto eventFullDto = eventMapper.toEventFullDto(event);
-        Long confirmedRequests = getConfirmedRequests(event.getId());
+        Long confirmedRequests = requestRepo.countByEventIdAndStatus(event.getId(), RequestStatus.CONFIRMED);
         completeWithViews(eventFullDto);
         eventFullDto.setConfirmedRequests(confirmedRequests);
         return eventFullDto;
-    }
-
-    private Long getConfirmedRequests(Long eventId) {
-        return requestRepo.countByEventIdAndStatus(eventId, RequestStatus.CONFIRMED);
     }
 
     private void updateEventFields(Event event, UpdateEventRequest request) {
@@ -408,9 +384,9 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
 
     private void updateEventDate(Event event, LocalDateTime eventDate) {
         if (Objects.nonNull(eventDate)) {
-                checkDateTimeIsAfterNowWithGap(eventDate, 1);
-                event.setEventDate(eventDate);
-            }
+            checkDateTimeIsAfterNowWithGap(eventDate, 1);
+            event.setEventDate(eventDate);
+        }
     }
 
     private void updateEventDescription(Event event, String description) {
@@ -427,7 +403,7 @@ public class EventServiceImpl implements AdminEventService, PublicEventService, 
     }
 
     private void updateEventAnnotation(Event event, String annotation) {
-        if (Objects.nonNull(annotation)) {
+        if (Objects.nonNull(annotation) && !annotation.isBlank()) {
             event.setAnnotation(annotation);
         }
     }

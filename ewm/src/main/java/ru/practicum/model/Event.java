@@ -54,4 +54,10 @@ public class Event {
     private EventState state = EventState.PENDING;
 
     private String title;
+
+    @Transient
+    private Long views;
+
+    @Transient
+    private Long confirmedRequests;
 }

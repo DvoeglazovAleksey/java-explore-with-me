@@ -1,6 +1,7 @@
 package ru.practicum.error.handler;
 
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingPathVariableException;
@@ -8,33 +9,14 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
-import ru.practicum.controllers.admin.AdminCategoryController;
-import ru.practicum.controllers.admin.AdminCompilationController;
-import ru.practicum.controllers.admin.AdminEventController;
-import ru.practicum.controllers.admin.AdminUserController;
-import ru.practicum.controllers.priv.PrivateEventController;
-import ru.practicum.controllers.priv.PrivateRequestController;
-import ru.practicum.controllers.pub.PublicCategoryController;
-import ru.practicum.controllers.pub.PublicCompilationController;
-import ru.practicum.controllers.pub.PublicEventController;
-import ru.practicum.error.exceptions.ConflictException;
-import ru.practicum.error.model.ErrorResponse;
 import ru.practicum.error.exceptions.BadRequestException;
+import ru.practicum.error.exceptions.ConflictException;
 import ru.practicum.error.exceptions.NotFoundException;
+import ru.practicum.error.model.ErrorResponse;
 
 import javax.validation.ConstraintViolationException;
 
-@RestControllerAdvice(assignableTypes = {
-        AdminUserController.class,
-        AdminCategoryController.class,
-        PublicCategoryController.class,
-        PrivateRequestController.class,
-        AdminEventController.class,
-        PublicEventController.class,
-        PrivateEventController.class,
-        AdminCompilationController.class,
-        PublicCompilationController.class
-})
+@RestControllerAdvice
 @Slf4j
 public class ErrorHandler {
     @ExceptionHandler({ConstraintViolationException.class,
@@ -42,17 +24,15 @@ public class ErrorHandler {
             MissingPathVariableException.class,
             BadRequestException.class})
     @ResponseStatus(HttpStatus.BAD_REQUEST)
-    public ErrorResponse handle(Exception e) throws Throwable {
+    public ErrorResponse handle(Exception e) throws Exception {
         if (e instanceof ConstraintViolationException ||
                 e instanceof MethodArgumentNotValidException ||
                 e instanceof MissingPathVariableException ||
                 e instanceof BadRequestException) {
             log.debug("Получен статус 400 BAD_REQUEST {}", e.getMessage(), e);
             return new ErrorResponse("Validation error: ", e.getMessage());
-        } else {
-            log.error("Произошла непредвиденная ошибка, получен статус 500 :  {} ", e.getMessage(), e);
-            return new ErrorResponse("INTERNAL_SERVER_ERROR", e.getMessage());
         }
+        throw e;
     }
 
     @ExceptionHandler
@@ -60,6 +40,13 @@ public class ErrorHandler {
     public ErrorResponse handleNotFoundException(final NotFoundException e) {
         log.error(e.getMessage(), e);
         return new ErrorResponse("Not found error: ", e.getMessage());
+    }
+
+    @ExceptionHandler
+    @ResponseStatus(HttpStatus.CONFLICT)
+    public ErrorResponse handleDataIntegrityViolationException(final DataIntegrityViolationException e) {
+        log.error(e.getMessage(), e);
+        return new ErrorResponse("Category name already exists.", e.getMessage());
     }
 
     @ExceptionHandler
