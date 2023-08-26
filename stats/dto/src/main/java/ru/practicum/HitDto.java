@@ -10,9 +10,11 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor(force = true)
 public class HitDto {
-    private Long id;
+    @NonNull
     private String app;
+    @NonNull
     private String uri;
+    @NonNull
     private String ip;
     @JsonFormat(shape = JsonFormat.Shape.STRING, pattern = "yyyy-MM-dd HH:mm:ss")
     private LocalDateTime timestamp;
