@@ -21,7 +21,7 @@ import java.util.List;
 @RequiredArgsConstructor
 public class PrivateCommentController {
     private final CommentService commentService;
-    private final static String PATTERN_DATE = ("yyyy-MM-dd HH:mm:ss");
+    private static final String PATTERN_DATE = ("yyyy-MM-dd HH:mm:ss");
 
     @PostMapping("/{eventId}")
     @ResponseStatus(HttpStatus.CREATED)
