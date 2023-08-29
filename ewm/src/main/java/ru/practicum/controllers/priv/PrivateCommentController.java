@@ -20,8 +20,8 @@ import java.util.List;
 @Validated
 @RequiredArgsConstructor
 public class PrivateCommentController {
-    private final CommentService commentService;
     private static final String PATTERN_DATE = ("yyyy-MM-dd HH:mm:ss");
+    private final CommentService commentService;
 
     @PostMapping("/{eventId}")
     @ResponseStatus(HttpStatus.CREATED)

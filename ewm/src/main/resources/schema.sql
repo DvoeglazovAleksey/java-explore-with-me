@@ -80,3 +80,4 @@ CREATE TABLE IF NOT EXISTS comments
         FOREIGN KEY (user_id) REFERENCES users (id)
 );
 
+CREATE INDEX idx_comments_event_id ON comments(event_id);

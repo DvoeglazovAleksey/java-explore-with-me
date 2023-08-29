@@ -4,6 +4,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.stereotype.Service;
 import ru.practicum.dto.comment.CommentDto;
 import ru.practicum.dto.comment.NewCommentDto;
@@ -23,13 +24,13 @@ import javax.persistence.criteria.CriteriaBuilder;
 import javax.persistence.criteria.CriteriaQuery;
 import javax.persistence.criteria.Predicate;
 import javax.persistence.criteria.Root;
-import javax.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class CommentServiceImpl implements CommentService {
     private final UserRepository userRepository;
     private final EventRepository eventRepository;
@@ -38,6 +39,7 @@ public class CommentServiceImpl implements CommentService {
     private final EntityManager entityManager;
 
     @Override
+    @Transactional
     public CommentDto add(NewCommentDto newCommentDto, Long userId, Long eventId) {
         User user = userRepository.findById(userId).orElseThrow(() -> new NotFoundException("User not found or unavailable."));
         Event event = getEventIfExists(eventId);
@@ -64,6 +66,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
     public CommentDto updateByAdmin(NewCommentDto newCommentDto, Long commentId) {
         Comment oldComment = getCommentIfExists(commentId);
         oldComment.setText(newCommentDto.getText());
@@ -73,6 +76,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CommentDto getByCommentId(Long userId, Long commentId) {
         Comment comment = getCommentIfExists(commentId);
         checkUser(userId);
@@ -84,6 +88,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CommentDto> getAllByCreateTime(Long userId, LocalDateTime createStart, LocalDateTime createEnd, Integer from, Integer size) {
         checkUser(userId);
         CriteriaBuilder builder = entityManager.getCriteriaBuilder();
@@ -115,6 +120,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
     public void deleteByAuthorId(Long userId, Long commentId) {
         Comment comment = getCommentIfExists(commentId);
         checkUser(userId);
@@ -126,6 +132,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<CommentDto> getByEventIdByAdmin(Long eventId, Integer from, Integer size) {
         getEventIfExists(eventId);
         Pageable page = PageRequest.of(from / size, size);
@@ -135,6 +142,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public CommentDto getByCommentIdByAdmin(Long commentId) {
         Comment comment = getCommentIfExists(commentId);
         log.debug("Comment with ID = {} was found", commentId);
@@ -142,6 +150,7 @@ public class CommentServiceImpl implements CommentService {
     }
 
     @Override
+    @Transactional
     public void deleteByAdmin(Long commentId) {
         commentsRepository.deleteById(commentId);
         log.debug("Comment with ID = {} was delete", commentId);
