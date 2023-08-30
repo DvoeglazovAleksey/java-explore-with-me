@@ -56,6 +56,9 @@ public class StatService {
     }
 
     public void getViewsList(List<Event> events) {
+        if (events == null || events.isEmpty()) {
+            return;
+        }
         LocalDateTime start = events.get(0).getCreatedOn();
         LocalDateTime end = LocalDateTime.now();
         List<String> uris = new ArrayList<>();

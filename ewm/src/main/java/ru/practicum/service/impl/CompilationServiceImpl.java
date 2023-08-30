@@ -40,7 +40,7 @@ public class CompilationServiceImpl implements CompilationService {
     public CompilationDto update(Long compId, UpdateCompilationRequest request) {
         Compilation compilation = getCompilationById(compId);
         Set<Long> eventsIds = request.getEvents();
-        if (!eventsIds.isEmpty() || Objects.nonNull(eventsIds)) {
+        if (Objects.nonNull(eventsIds) && !eventsIds.isEmpty()) {
             Set<Event> updatedEvents = fetchEvents(eventsIds);
             compilation.setEvents(updatedEvents);
         }
